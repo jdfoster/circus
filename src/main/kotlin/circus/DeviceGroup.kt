@@ -34,14 +34,11 @@ class DeviceGroup(context: ActorContext<DeviceGroupMessage>, private val groupId
     private fun trackDevice(req: DeviceManager.Factory.RequestTrackDevice): Behavior<DeviceGroupMessage> {
         when (groupId) {
             req.groupId -> {
-                val device = when (val device = deviceIdToActor.get(req.deviceId)) {
-                    null -> {
-                        context.log.info("Creating device actor for {}", req.deviceId)
-                        val deviceActor = context.spawn(Device.createBehaviour(req.groupId, req.deviceId), "device-${req.deviceId}")
-                        deviceIdToActor.put(req.deviceId, deviceActor)
-                        deviceActor
-                    }
-                    else -> device
+                val device = deviceIdToActor[req.deviceId]?: kotlin.run {
+                    context.log.info("Creating device actor for {}", req.deviceId)
+                    val deviceActor = context.spawn(Device.createBehaviour(req.groupId, req.deviceId), "device-${req.deviceId}")
+                    deviceIdToActor[req.deviceId] = deviceActor
+                    deviceActor
                 }
 
                 req.replyTo.tell(DeviceManager.Factory.DeviceRegistered(device))
