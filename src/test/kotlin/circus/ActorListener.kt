@@ -9,7 +9,7 @@ import io.kotlintest.extensions.TestListener
 object ActorListener: TestListener {
     val actorTestKit: ActorTestKit = ActorTestKit.create()
 
-    override fun afterSpecClass(spec: Spec, results: Map<TestCase, TestResult>) {
+    override fun afterProject() {
         actorTestKit.shutdownTestKit()
     }
 }
