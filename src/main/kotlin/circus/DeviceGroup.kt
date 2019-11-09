@@ -8,7 +8,7 @@ import akka.actor.typed.javadsl.ActorContext
 import akka.actor.typed.javadsl.Behaviors
 import akka.actor.typed.javadsl.Receive
 
-class DeviceGroup(private val context: ActorContext<DeviceGroupMessage>, private val groupId: String): AbstractBehavior<DeviceGroup.Factory.DeviceGroupMessage>() {
+class DeviceGroup(context: ActorContext<DeviceGroupMessage>, private val groupId: String): AbstractBehavior<DeviceGroup.Factory.DeviceGroupMessage>(context) {
     companion object Factory {
         interface DeviceGroupMessage {}
         data class DeviceTerminated(val device: ActorContext<Device.Factory.DeviceMessage>, val groupId: String, val deviceId: String): DeviceGroupMessage
@@ -46,7 +46,7 @@ class DeviceGroup(private val context: ActorContext<DeviceGroupMessage>, private
 
                 req.replyTo.tell(DeviceManager.Factory.DeviceRegistered(device))
             }
-            else -> context.log.warning("Ignoring TrackDevice request for {}. This actor is responsible for {}.", req.groupId, groupId)
+            else -> context.log.warn("Ignoring TrackDevice request for {}. This actor is responsible for {}.", req.groupId, groupId)
         }
 
         return this

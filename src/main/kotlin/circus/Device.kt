@@ -8,7 +8,7 @@ import akka.actor.typed.javadsl.ActorContext
 import akka.actor.typed.javadsl.Behaviors
 import akka.actor.typed.javadsl.Receive
 
-class Device(private val context: ActorContext<DeviceMessage>, groupId: String, deviceId: String): AbstractBehavior<Device.Factory.DeviceMessage>() {
+class Device(context: ActorContext<DeviceMessage>, groupId: String, deviceId: String): AbstractBehavior<Device.Factory.DeviceMessage>(context) {
     companion object Factory {
         interface DeviceMessage {}
         data class ReadTemperature(val requestId: Long, val replyTo: ActorRef<RespondTemperature>): DeviceMessage

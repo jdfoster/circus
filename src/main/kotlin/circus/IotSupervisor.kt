@@ -7,7 +7,7 @@ import akka.actor.typed.javadsl.ActorContext
 import akka.actor.typed.javadsl.Behaviors
 import akka.actor.typed.javadsl.Receive
 
-class IotSupervisor(private val context: ActorContext<Unit>): AbstractBehavior<Unit>() {
+class IotSupervisor(context: ActorContext<Unit>): AbstractBehavior<Unit>(context) {
     companion object Factory {
         fun createBehaviour(): Behavior<Unit> {
             return Behaviors.setup{ IotSupervisor(it) }
