@@ -11,15 +11,15 @@ class DeviceGroupTest: StringSpec() {
 
     init {
         "be able to register a device actor" {
-            val probe = ActorListener.actorTestKit.createTestProbe<DeviceManager.Factory.DeviceRegistered>()
+            val registeredProbe = ActorListener.actorTestKit.createTestProbe<DeviceManager.Factory.DeviceRegistered>()
             val groupActor = ActorListener.actorTestKit.spawn(DeviceGroup.createDeviceGroup("group"))
 
-            groupActor.tell(DeviceManager.Factory.RequestTrackDevice("group", "deviceOne", probe.ref))
-            val registeredOne = probe.receiveMessage()
+            groupActor.tell(DeviceManager.Factory.RequestTrackDevice("group", "deviceOne", registeredProbe.ref))
+            val registeredOne = registeredProbe.receiveMessage()
             val deviceActorOne = registeredOne.device
 
-            groupActor.tell(DeviceManager.Factory.RequestTrackDevice("group", "deviceTwo", probe.ref))
-            val registeredTwo = probe.receiveMessage()
+            groupActor.tell(DeviceManager.Factory.RequestTrackDevice("group", "deviceTwo", registeredProbe.ref))
+            val registeredTwo = registeredProbe.receiveMessage()
             val deviceActorTwo = registeredTwo.device
             deviceActorOne shouldNotBe deviceActorTwo
 
@@ -31,22 +31,61 @@ class DeviceGroupTest: StringSpec() {
         }
 
         "ignore requests for wrong groupId" {
-            val probe = ActorListener.actorTestKit.createTestProbe<DeviceManager.Factory.DeviceRegistered>()
+            val registeredProbe = ActorListener.actorTestKit.createTestProbe<DeviceManager.Factory.DeviceRegistered>()
             val groupActor = ActorListener.actorTestKit.spawn(DeviceGroup.createDeviceGroup("group"))
 
-            groupActor.tell(DeviceManager.Factory.RequestTrackDevice("wrongGroup", "deviceOne", probe.ref))
-            probe.expectNoMessage(500.milliseconds)
+            groupActor.tell(DeviceManager.Factory.RequestTrackDevice("wrongGroup", "deviceOne", registeredProbe.ref))
+            registeredProbe.expectNoMessage(500.milliseconds)
         }
 
         "return same actor for same deviceId" {
-            val probe = ActorListener.actorTestKit.createTestProbe<DeviceManager.Factory.DeviceRegistered>()
+            val registerProbe = ActorListener.actorTestKit.createTestProbe<DeviceManager.Factory.DeviceRegistered>()
             val groupActor = ActorListener.actorTestKit.spawn(DeviceGroup.createDeviceGroup("group"))
 
-            groupActor.tell(DeviceManager.Factory.RequestTrackDevice("group", "deviceOne", probe.ref))
-            val registeredOne = probe.receiveMessage()
-            groupActor.tell(DeviceManager.Factory.RequestTrackDevice("group", "deviceOne", probe.ref))
-            val registeredTwo = probe.receiveMessage()
+            groupActor.tell(DeviceManager.Factory.RequestTrackDevice("group", "deviceOne", registerProbe.ref))
+            val registeredOne = registerProbe.receiveMessage()
+            groupActor.tell(DeviceManager.Factory.RequestTrackDevice("group", "deviceOne", registerProbe.ref))
+            val registeredTwo = registerProbe.receiveMessage()
             registeredOne.device shouldBe registeredTwo.device
+        }
+
+        "be able to list active devices" {
+            val registeredProbe = ActorListener.actorTestKit.createTestProbe<DeviceManager.Factory.DeviceRegistered>()
+            val groupActor = ActorListener.actorTestKit.spawn(DeviceGroup.createDeviceGroup("group"))
+
+            groupActor.tell(DeviceManager.Factory.RequestTrackDevice("group", "deviceOne", registeredProbe.ref))
+            registeredProbe.receiveMessage()
+
+            groupActor.tell(DeviceManager.Factory.RequestTrackDevice("group", "deviceTwo", registeredProbe.ref))
+            registeredProbe.receiveMessage()
+
+            val deviceListProbe = ActorListener.actorTestKit.createTestProbe<DeviceGroup.Factory.ReplyDeviceList>()
+            groupActor.tell(DeviceGroup.Factory.RequestDeviceList(0, "group", deviceListProbe.ref))
+            deviceListProbe.expectMessage(DeviceGroup.Factory.ReplyDeviceList(0, setOf("deviceOne", "deviceTwo")))
+        }
+
+        "be able to list active devices after one shuts down" {
+            val registeredProbe = ActorListener.actorTestKit.createTestProbe<DeviceManager.Factory.DeviceRegistered>()
+            val groupActor = ActorListener.actorTestKit.spawn(DeviceGroup.createDeviceGroup("group"))
+
+            groupActor.tell(DeviceManager.Factory.RequestTrackDevice("group", "deviceOne", registeredProbe.ref))
+            val registeredOne = registeredProbe.receiveMessage()
+            val toShutdown = registeredOne.device
+
+            groupActor.tell(DeviceManager.Factory.RequestTrackDevice("group", "deviceTwo", registeredProbe.ref))
+            registeredProbe.receiveMessage()
+
+            val deviceListProbe = ActorListener.actorTestKit.createTestProbe<DeviceGroup.Factory.ReplyDeviceList>()
+            groupActor.tell(DeviceGroup.Factory.RequestDeviceList(0, "group", deviceListProbe.ref))
+            deviceListProbe.expectMessage(DeviceGroup.Factory.ReplyDeviceList(0, setOf("deviceOne", "deviceTwo")))
+
+            toShutdown.tell(Device.Factory.Passivate)
+            registeredProbe.expectTerminated(toShutdown, registeredProbe.remainingOrDefault)
+
+            registeredProbe.awaitAssert {
+                groupActor.tell(DeviceGroup.Factory.RequestDeviceList(1, "group", deviceListProbe.ref))
+                deviceListProbe.expectMessage(DeviceGroup.Factory.ReplyDeviceList(1, setOf("deviceTwo")))
+            }
         }
     }
 }

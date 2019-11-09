@@ -8,13 +8,14 @@ import akka.actor.typed.javadsl.ActorContext
 import akka.actor.typed.javadsl.Behaviors
 import akka.actor.typed.javadsl.Receive
 
-class Device(context: ActorContext<DeviceMessage>, groupId: String, deviceId: String): AbstractBehavior<Device.Factory.DeviceMessage>(context) {
+class Device(context: ActorContext<DeviceMessage>, private val groupId: String, private val deviceId: String): AbstractBehavior<Device.Factory.DeviceMessage>(context) {
     companion object Factory {
-        interface DeviceMessage {}
+        interface DeviceMessage
         data class ReadTemperature(val requestId: Long, val replyTo: ActorRef<RespondTemperature>): DeviceMessage
         data class RespondTemperature(val requestId: Long, val value: Double?)
         data class RecordTemperature(val requestId: Long, val value: Double, val replyTo: ActorRef<TemperatureRecorded>): DeviceMessage
         data class TemperatureRecorded(val requestId: Long)
+        object Passivate: DeviceMessage
 
         fun createBehaviour(groupId: String, deviceId: String): Behavior<DeviceMessage> {
             return Behaviors.setup{ Device(it, groupId, deviceId) }
@@ -31,6 +32,7 @@ class Device(context: ActorContext<DeviceMessage>, groupId: String, deviceId: St
         return newReceiveBuilder()
                 .onMessage(ReadTemperature::class.java) { readTemperature(it) }
                 .onMessage(RecordTemperature::class.java) { recordTemperature(it) }
+                .onMessage(Passivate::class.java) { Behaviors.stopped() }
                 .onSignal(PostStop::class.java) { postStop() }
                 .build()
     }
@@ -48,7 +50,7 @@ class Device(context: ActorContext<DeviceMessage>, groupId: String, deviceId: St
     }
 
     private fun postStop(): Device {
-        context.log.info("IoT application stopped")
+        context.log.info("Device actor {}-{} stopped", groupId, deviceId)
         return this
     }
 }
