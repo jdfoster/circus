@@ -59,9 +59,9 @@ class DeviceGroupTest: StringSpec() {
             groupActor.tell(DeviceManager.Factory.RequestTrackDevice("group", "deviceTwo", registeredProbe.ref))
             registeredProbe.receiveMessage()
 
-            val deviceListProbe = ActorListener.actorTestKit.createTestProbe<DeviceGroup.Factory.ReplyDeviceList>()
-            groupActor.tell(DeviceGroup.Factory.RequestDeviceList(0, "group", deviceListProbe.ref))
-            deviceListProbe.expectMessage(DeviceGroup.Factory.ReplyDeviceList(0, setOf("deviceOne", "deviceTwo")))
+            val deviceListProbe = ActorListener.actorTestKit.createTestProbe<DeviceManager.Factory.ReplyDeviceList>()
+            groupActor.tell(DeviceManager.Factory.RequestDeviceList(0, "group", deviceListProbe.ref))
+            deviceListProbe.expectMessage(DeviceManager.Factory.ReplyDeviceList(0, setOf("deviceOne", "deviceTwo")))
         }
 
         "be able to list active devices after one shuts down" {
@@ -75,16 +75,16 @@ class DeviceGroupTest: StringSpec() {
             groupActor.tell(DeviceManager.Factory.RequestTrackDevice("group", "deviceTwo", registeredProbe.ref))
             registeredProbe.receiveMessage()
 
-            val deviceListProbe = ActorListener.actorTestKit.createTestProbe<DeviceGroup.Factory.ReplyDeviceList>()
-            groupActor.tell(DeviceGroup.Factory.RequestDeviceList(0, "group", deviceListProbe.ref))
-            deviceListProbe.expectMessage(DeviceGroup.Factory.ReplyDeviceList(0, setOf("deviceOne", "deviceTwo")))
+            val deviceListProbe = ActorListener.actorTestKit.createTestProbe<DeviceManager.Factory.ReplyDeviceList>()
+            groupActor.tell(DeviceManager.Factory.RequestDeviceList(0, "group", deviceListProbe.ref))
+            deviceListProbe.expectMessage(DeviceManager.Factory.ReplyDeviceList(0, setOf("deviceOne", "deviceTwo")))
 
             toShutdown.tell(Device.Factory.Passivate)
             registeredProbe.expectTerminated(toShutdown, registeredProbe.remainingOrDefault)
 
             registeredProbe.awaitAssert {
-                groupActor.tell(DeviceGroup.Factory.RequestDeviceList(1, "group", deviceListProbe.ref))
-                deviceListProbe.expectMessage(DeviceGroup.Factory.ReplyDeviceList(1, setOf("deviceTwo")))
+                groupActor.tell(DeviceManager.Factory.RequestDeviceList(1, "group", deviceListProbe.ref))
+                deviceListProbe.expectMessage(DeviceManager.Factory.ReplyDeviceList(1, setOf("deviceTwo")))
             }
         }
     }

@@ -12,8 +12,6 @@ class DeviceGroup(context: ActorContext<DeviceGroupMessage>, private val groupId
     companion object Factory {
         interface DeviceGroupMessage
         data class DeviceTerminated(val device: ActorRef<Device.Factory.DeviceMessage>, val groupId: String, val deviceId: String): DeviceGroupMessage
-        data class RequestDeviceList(val requestId: Long, val groupId: String, val replyTo: ActorRef<ReplyDeviceList>): DeviceGroupMessage
-        data class ReplyDeviceList(val requestId: Long, val ids: Set<String>)
 
         fun createDeviceGroup(groupId: String): Behavior<DeviceGroupMessage> {
             return Behaviors.setup{ DeviceGroup(it, groupId) }
@@ -29,8 +27,8 @@ class DeviceGroup(context: ActorContext<DeviceGroupMessage>, private val groupId
     override fun createReceive(): Receive<DeviceGroupMessage> {
         return newReceiveBuilder()
                 .onMessage(DeviceManager.Factory.RequestTrackDevice::class.java) { trackDevice(it) }
+                .onMessage(DeviceManager.Factory.RequestDeviceList::class.java) { listDevices(it) }
                 .onMessage(DeviceTerminated::class.java) { dropDevice(it) }
-                .onMessage(RequestDeviceList::class.java) { listDevices(it) }
                 .onSignal(PostStop::class.java) { postStop() }
                 .build()
     }
@@ -54,20 +52,20 @@ class DeviceGroup(context: ActorContext<DeviceGroupMessage>, private val groupId
         return this
     }
 
-    private fun dropDevice(req: DeviceTerminated): Behavior<DeviceGroupMessage> {
-        context.log.info("Device actor for {} has been terminated", req.deviceId)
-        deviceIdToActor.remove(req.deviceId)
-        return this
-    }
-
-    private fun listDevices(req: RequestDeviceList): Behavior<DeviceGroupMessage> {
+    private fun listDevices(req: DeviceManager.Factory.RequestDeviceList): Behavior<DeviceGroupMessage> {
         return when (groupId) {
             req.groupId -> {
-                req.replyTo.tell(ReplyDeviceList(req.requestId, deviceIdToActor.keys))
+                req.replyTo.tell(DeviceManager.Factory.ReplyDeviceList(req.requestId, deviceIdToActor.keys))
                 this
             }
             else -> Behaviors.unhandled()
         }
+    }
+
+    private fun dropDevice(req: DeviceTerminated): Behavior<DeviceGroupMessage> {
+        context.log.info("Device actor for {} has been terminated", req.deviceId)
+        deviceIdToActor.remove(req.deviceId)
+        return this
     }
 
     private fun postStop(): DeviceGroup {
